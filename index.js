@@ -9,7 +9,8 @@ class SnakePart {
 }
 
 let tileCount = 20;
-let tileSize = canvas.width / tileCount - 2;
+let gridStep = canvas.width / tileCount;
+let tileSize = gridStep - 2;
 let headX = 12;
 let headY = 12;
 const snakeParts = [];
@@ -18,43 +19,79 @@ let tailLength = 2;
 let appleX = 5;
 let appleY = 5;
 
+let currentLevel = 1;
+
+
 let speed = 8;
 let xVelocity = 0;
 let yVelocity = 0;
 
+let isChangingDirection = false;
 let score = 0;
-
 const foodSound = new Audio('food.mp3');
 
-function drawGame() {
-    changeSnakePosition();
-    let result = isGameOver();
-    if(result) return;
+function pickLevel() {
+    currentLevel++;
+    if(currentLevel > 5) {
+        currentLevel = 1;
+    }
+    document.getElementById('level-btn').innerText = 'LEVEL ' + currentLevel;
+}
 
+function startGame() {
+    switch (currentLevel) {
+        case 1: speed = 6; break;
+        case 2: speed = 9; break;
+        case 3: speed = 12; break;
+        case 4: speed = 15; break;
+        case 5: speed = 18; break;
+    }
+
+    document.getElementById('main-menu').classList.add('hidden');
+
+    headX = 12;
+    headY = 12;
+    snakeParts.length = 0;
+    tailLength = 2;
+    score = 0;
+    xVelocity = 0;
+    yVelocity = 0;
+
+    drawGame();
+}
+
+function openSettings() {
+    document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+function closeSettings() {
+    document.getElementById('settings-modal').classList.add('hidden');
+}
+
+function showMenu() {
+    document.getElementById('main-menu').classList.remove('hidden');
+}
+function drawGame() {
+    isChangingDirection = false;
+    changeSnakePosition();
+    if(isGameOver()) return;
     clearScreen();
     checkAppleCollision();
     drawApple();
     drawSnake();
     drawScore();
 
-    // level 2
-    if(score > 2) {
-        speed = 11;
-    }
-    if(score > 10) {
-        speed = 15;
-    }
     setTimeout(drawGame, 1000/speed);
 }
 
 function isGameOver() {
-    let gameOver = false;
     if(xVelocity === 0 && yVelocity === 0) return false;
+    let gameOver = false;
 
     // walls
     if(headX < 0) {
         gameOver = true;
-    } else if(headY === tileCount) {
+    } else if(headX === tileCount) {
         gameOver = true;
     } else if(headY < 0) {
         gameOver = true;
@@ -62,7 +99,7 @@ function isGameOver() {
         gameOver = true;
     }
 
-    for(let i = 0; i < snakeParts.length; i++) {
+    for(let i = 0; i < snakeParts.length - 1; i++) {
         let part = snakeParts[i];
         if(part.x === headX && part.y === headY) {
             gameOver = true;
@@ -74,6 +111,7 @@ function isGameOver() {
         context.fillStyle = 'white';
         context.font = '50px Arial';
         context.fillText('Game Over!', canvas.width/4.5, canvas.height/2);
+        setTimeout(showMenu, 1500);
     }
 
     return gameOver;
@@ -94,31 +132,54 @@ function drawSnake() {
     context.fillStyle = 'green';
     for(let i = 0; i < snakeParts.length; i++) {
         let part = snakeParts[i];
-        context.fillRect(part.x * tileCount, part.y * tileCount, tileSize, tileSize);
-    }
-    snakeParts.push(new SnakePart(headX, headY));
-    if(snakeParts.length > tailLength) {
-        snakeParts.shift();
+        context.fillRect(part.x * gridStep, part.y * gridStep, tileSize, tileSize);
     }
 
     context.fillStyle = 'white';
-    context.fillRect(headX * tileCount, headY * tileCount, tileSize, tileSize);
+    context.fillRect(headX * gridStep, headY * gridStep, tileSize, tileSize);
 }
 
 function changeSnakePosition() {
     headX = headX + xVelocity;
     headY = headY + yVelocity;
+    if(xVelocity !== 0 || yVelocity !== 0) {
+        snakeParts.push(new SnakePart(headX, headY));
+        while(snakeParts.length > tailLength) {
+            snakeParts.shift();
+        }
+    }
 }
 
 function drawApple() {
     context.fillStyle = 'red';
-    context.fillRect(appleX * tileCount, appleY * tileCount, tileSize, tileSize);
+    context.fillRect(appleX * gridStep, appleY * gridStep, tileSize, tileSize);
+}
+
+function spawnApple() {
+    let appleOnSnake = true;
+    while(appleOnSnake) {
+        appleX = Math.floor(Math.random() * tileCount);
+        appleY = Math.floor(Math.random() * tileCount);
+        appleOnSnake = false;
+
+        if(appleX === headX && appleY === headY) {
+            appleOnSnake = true;
+            continue;
+        }
+
+        for(let i = 0; i < snakeParts.length; i++) {
+            let part = snakeParts[i];
+            if(part.x === appleX && part.y === appleY) {
+                appleOnSnake = true;
+                break;
+            }
+        }
+    }
 }
 
 function checkAppleCollision() {
     if(appleX === headX && appleY === headY) {
-        appleX = Math.floor(Math.random() * tileCount);
-        appleY = Math.floor(Math.random() * tileCount);
+        spawnApple();
         tailLength++;
         score++;
         foodSound.play();
@@ -128,34 +189,33 @@ function checkAppleCollision() {
 document.addEventListener('keydown', keyDown);
 
 function keyDown(event) {
-
+    if(isChangingDirection) return;
+    const key = event.keyCode;
     // up
-    if(event.keyCode === 38 || event.keyCode === 87) {
-        if(yVelocity === 1) return;
+    if((key === 38 || key === 87) && yVelocity !== 1)  {
         xVelocity = 0;
         yVelocity = -1;
+        isChangingDirection = true;
     }
 
     // down
-    if(event.keyCode === 40 || event.keyCode === 83) {
-        if(yVelocity === -1) return;
+    if((key === 40 || key === 83) && yVelocity !== -1) {
         xVelocity = 0;
         yVelocity = 1;
+        isChangingDirection = true;
     }
 
     // left
-    if(event.keyCode === 37 || event.keyCode === 65) {
-        if(xVelocity === 1) return;
+    if((key === 37 || key === 65) && xVelocity !== 1) {
         xVelocity = -1;
         yVelocity = 0;
+        isChangingDirection = true;
     }
 
     // right
-    if(event.keyCode === 39 || event.keyCode === 68) {
-        if(xVelocity === -1) return;
+    if((key === 39 || key === 68) && xVelocity !== 1) {
         xVelocity = 1;
         yVelocity = 0;
+        isChangingDirection = true;
     }
 }
-
-drawGame();

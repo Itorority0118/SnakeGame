@@ -21,6 +21,21 @@ let appleY = 5;
 
 let currentLevel = 1;
 
+const walls = [
+    {x: 2, y: 2}, {x: 3, y: 2}, {x: 4, y: 2}, {x: 2, y: 3}, {x: 2, y: 4},
+    {x: 15, y: 2}, {x: 16, y: 2}, {x: 17, y: 2}, {x: 17, y: 3}, {x: 17, y: 4},
+    {x: 2, y: 17}, {x: 2, y: 16}, {x: 2, y: 15}, {x: 3, y: 17}, {x: 4, y: 17},
+    {x: 17, y: 17}, {x: 17, y: 16}, {x: 17, y: 15}, {x: 16, y: 17}, {x: 15, y: 17},
+
+    {x: 9, y: 4}, {x: 10, y: 4}, {x: 11, y: 4},
+    {x: 9, y: 15}, {x: 10, y: 15}, {x: 11, y: 15},
+    {x: 4, y: 9}, {x: 4, y: 10}, {x: 4, y: 11},
+    {x: 15, y: 9}, {x: 15, y: 10}, {x: 15, y: 11},
+
+    {x: 8, y: 8}, {x: 9, y: 8}, {x: 10, y: 8}, {x: 11, y: 8},
+    {x: 9, y: 9}, {x: 9, y: 10}
+];
+
 
 let speed = 8;
 let xVelocity = 0;
@@ -76,6 +91,7 @@ function drawGame() {
     changeSnakePosition();
     if(isGameOver()) return;
     clearScreen();
+    drawWalls();
     checkAppleCollision();
     drawApple();
     drawSnake();
@@ -99,6 +115,16 @@ function isGameOver() {
         gameOver = true;
     }
 
+    if(currentLevel === 2) {
+        for(let i = 0; i < walls.length; i++) {
+            let wall = walls[i];
+            if(headX === wall.x && headY === wall.y) {
+                gameOver = true;
+                break;
+            }
+        }
+    }
+
     for(let i = 0; i < snakeParts.length - 1; i++) {
         let part = snakeParts[i];
         if(part.x === headX && part.y === headY) {
@@ -115,6 +141,16 @@ function isGameOver() {
     }
 
     return gameOver;
+}
+
+function drawWalls() {
+    if(currentLevel === 2) {
+        context.fillStyle = 'gray';
+        for(let i = 0; i < walls.length; i++) {
+            let wall = walls[i];
+            context.fillRect(wall.x * gridStep, wall.y * gridStep, tileSize, tileSize);
+        }
+    }
 }
 
 function drawScore() {
@@ -167,6 +203,16 @@ function spawnApple() {
             continue;
         }
 
+        if(currentLevel === 2) {
+            for(let i = 0; i < walls.length; i++) {
+                let wall = walls[i];
+                if(appleX === wall.x && appleY === wall.y) {
+                    appleOnSnake = true;
+                    break;
+                }
+            }
+        }
+
         for(let i = 0; i < snakeParts.length; i++) {
             let part = snakeParts[i];
             if(part.x === appleX && part.y === appleY) {
@@ -213,7 +259,7 @@ function keyDown(event) {
     }
 
     // right
-    if((key === 39 || key === 68) && xVelocity !== 1) {
+    if((key === 39 || key === 68) && xVelocity !== -1) {
         xVelocity = 1;
         yVelocity = 0;
         isChangingDirection = true;

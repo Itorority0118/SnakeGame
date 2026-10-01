@@ -19,6 +19,16 @@ let tailLength = 2;
 let appleX = 5;
 let appleY = 5;
 
+let crateX = 8;
+let crateY = 8;
+let targetX = 15;
+let targetY = 15;
+let isTargetActive = false;
+let portalA = {x:3, y:10};
+let portalB = {x:16, y:10};
+const PORTAL_COOLDOWN = 10000;
+let crateTeleportReadyAt = 0;
+
 let currentLevel = 1;
 
 const walls = [
@@ -36,6 +46,12 @@ const walls = [
     {x: 9, y: 9}, {x: 9, y: 10}
 ];
 
+const level3Walls = [
+    {x: 10, y: 0}, {x: 10, y: 1}, {x: 10, y: 2}, {x: 10, y: 3}, {x: 10, y: 4},
+    {x: 10, y: 5}, {x: 10, y: 6}, {x: 10, y: 7}, {x: 10, y: 8}, {x: 10, y: 9},
+    {x: 10, y: 10}, {x: 10, y: 11}, {x: 10, y: 12}, {x: 10, y: 13}, {x: 10, y: 14},
+    {x: 10, y: 15}, {x: 10, y: 16}, {x: 10, y: 17}, {x: 10, y: 18}, {x: 10, y: 19}
+];
 
 let speed = 8;
 let xVelocity = 0;
@@ -57,7 +73,7 @@ function startGame() {
     switch (currentLevel) {
         case 1: speed = 6; break;
         case 2: speed = 9; break;
-        case 3: speed = 12; break;
+        case 3: speed = 7; break;
         case 4: speed = 15; break;
         case 5: speed = 18; break;
     }
@@ -71,6 +87,13 @@ function startGame() {
     score = 0;
     xVelocity = 0;
     yVelocity = 0;
+
+    crateX = 8;
+    crateY = 8;
+    targetX = 15;
+    targetY = 15;
+    crateTeleportReadyAt = 0;
+    isTargetActive = false;
 
     drawGame();
 }
@@ -89,9 +112,11 @@ function showMenu() {
 function drawGame() {
     isChangingDirection = false;
     changeSnakePosition();
+    checkCrateOnTarget();
     if(isGameOver()) return;
     clearScreen();
     drawWalls();
+    drawLevel3();
     checkAppleCollision();
     drawApple();
     drawSnake();
@@ -105,19 +130,31 @@ function isGameOver() {
     let gameOver = false;
 
     // walls
-    if(headX < 0) {
-        gameOver = true;
-    } else if(headX === tileCount) {
-        gameOver = true;
-    } else if(headY < 0) {
-        gameOver = true;
-    } else if(headY === tileCount) {
-        gameOver = true;
+    if(currentLevel !== 1 && currentLevel !== 3) {
+        if (headX < 0) {
+            gameOver = true;
+        } else if (headX === tileCount) {
+            gameOver = true;
+        } else if (headY < 0) {
+            gameOver = true;
+        } else if (headY === tileCount) {
+            gameOver = true;
+        }
     }
 
     if(currentLevel === 2) {
         for(let i = 0; i < walls.length; i++) {
             let wall = walls[i];
+            if(headX === wall.x && headY === wall.y) {
+                gameOver = true;
+                break;
+            }
+        }
+    }
+
+    if(currentLevel === 3) {
+        for(let i = 0; i < level3Walls.length; i++) {
+            let wall = level3Walls[i];
             if(headX === wall.x && headY === wall.y) {
                 gameOver = true;
                 break;
@@ -151,6 +188,36 @@ function drawWalls() {
             context.fillRect(wall.x * gridStep, wall.y * gridStep, tileSize, tileSize);
         }
     }
+
+    if(currentLevel === 3) {
+        context.fillStyle = 'gray';
+        for(let i = 0; i < level3Walls.length; i++) {
+            let wall = level3Walls[i];
+            context.fillRect(wall.x * gridStep, wall.y * gridStep, tileSize, tileSize);
+        }
+    }
+}
+
+function drawLevel3() {
+    if(currentLevel === 3) {
+        context.fillStyle = 'orange';
+        context.fillRect(portalA.x * gridStep, portalA.y * gridStep, tileSize, tileSize);
+        context.fillStyle = 'blue';
+        context.fillRect(portalB.x * gridStep, portalB.y * gridStep, tileSize, tileSize);
+
+        if (isTargetActive) return;
+
+        context.strokeStyle = 'yellow';
+        context.lineWidth = 2;
+        context.strokeRect(targetX * gridStep, targetY * gridStep, tileSize, tileSize);
+
+        if(isTargetActive) {
+            context.fillStyle = 'gold';
+        } else {
+            context.fillStyle = 'brown';
+        }
+        context.fillRect(crateX * gridStep, crateY * gridStep, tileSize, tileSize);
+    }
 }
 
 function drawScore() {
@@ -176,17 +243,78 @@ function drawSnake() {
 }
 
 function changeSnakePosition() {
-    headX = headX + xVelocity;
-    headY = headY + yVelocity;
-    if(xVelocity !== 0 || yVelocity !== 0) {
+    let nextX = headX + xVelocity;
+    let nextY = headY + yVelocity;
+
+    if (currentLevel === 1 || currentLevel === 3) {
+        if (nextX < 0) {
+            nextX = tileCount - 1;
+        }
+        if (nextX >= tileCount){
+            nextX = 0;
+        }
+        if (nextY < 0) {
+            nextY = tileCount - 1;
+        }
+        if (nextY >= tileCount) {
+            nextY = 0;
+        }
+    }
+
+    if (currentLevel === 3) {
+        if (!isTargetActive && nextX === crateX && nextY === crateY) {
+            let nextCrateX = crateX + xVelocity;
+            let nextCrateY = crateY + yVelocity;
+
+            let insideCanvas = (nextCrateX >= 0 && nextCrateX < tileCount && nextCrateY >= 0 && nextCrateY < tileCount);
+
+            let hitWall = false;
+            for (let i = 0; i < level3Walls.length; i++) {
+                if (nextCrateX === level3Walls[i].x && nextCrateY === level3Walls[i].y) {
+                    hitWall = true;
+                    break;
+                }
+            }
+
+            if (insideCanvas && !hitWall) {
+                crateX = nextCrateX;
+                crateY = nextCrateY;
+            } else {
+                resetCrate(nextX, nextY);
+            }
+        }
+
+        const now = Date.now();
+        if (now >= crateTeleportReadyAt) {
+            if (crateX === portalA.x && crateY === portalA.y) {
+                crateX = portalB.x; crateY = portalB.y;
+                crateTeleportReadyAt = now + PORTAL_COOLDOWN;
+            } else if (crateX === portalB.x && crateY === portalB.y) {
+                crateX = portalA.x; crateY = portalA.y;
+                crateTeleportReadyAt = now + PORTAL_COOLDOWN;
+            }
+        }
+
+        if (nextX === portalA.x && nextY === portalA.y) {
+            nextX = portalB.x; nextY = portalB.y;
+        } else if (nextX === portalB.x && nextY === portalB.y) {
+            nextX = portalA.x; nextY = portalA.y;
+        }
+    }
+
+    headX = nextX;
+    headY = nextY;
+
+    if (xVelocity !== 0 || yVelocity !== 0) {
         snakeParts.push(new SnakePart(headX, headY));
-        while(snakeParts.length > tailLength) {
+        while (snakeParts.length > tailLength) {
             snakeParts.shift();
         }
     }
 }
 
 function drawApple() {
+    if (currentLevel === 3 && !isTargetActive) return;
     context.fillStyle = 'red';
     context.fillRect(appleX * gridStep, appleY * gridStep, tileSize, tileSize);
 }
@@ -213,6 +341,17 @@ function spawnApple() {
             }
         }
 
+        if(currentLevel === 3) {
+            if(appleX === 10) { appleOnSnake = true; continue; }
+            if((appleX === portalA.x && appleY === portalA.y)
+                || (appleX === portalB.x && appleY === portalB.y)
+                || (appleX === crateX && appleY === crateY)
+                || (appleX === targetX && appleY === targetY)) {
+                appleOnSnake = true;
+                continue;
+            }
+        }
+
         for(let i = 0; i < snakeParts.length; i++) {
             let part = snakeParts[i];
             if(part.x === appleX && part.y === appleY) {
@@ -223,12 +362,71 @@ function spawnApple() {
     }
 }
 
+function resetCrate(avoidX, avoidY) {
+    let valid = false;
+    let newX, newY;
+
+    while (!valid) {
+        newX = Math.floor(Math.random() * (tileCount - 4)) + 2;
+        newY = Math.floor(Math.random() * (tileCount - 4)) + 2;
+        valid = true;
+
+        if (newX === 10) {
+            valid = false;
+        }
+        if (newX === headX && newY === headY) {
+            valid = false;
+        }
+        if (newX === avoidX && newY === avoidY) {
+            valid = false;
+        }
+
+        if ((newX === portalA.x && newY === portalA.y) || (newX === portalB.x && newY === portalB.y)) {
+            valid = false;
+        }
+        if (newX === targetX && newY === targetY) {
+            valid = false;
+        }
+
+        for (let i = 0; i < snakeParts.length; i++) {
+            if (snakeParts[i].x === newX && snakeParts[i].y === newY) {
+                valid = false;
+                break;
+            }
+        }
+    }
+
+    crateX = newX;
+    crateY = newY;
+    crateTeleportReadyAt = 0;
+}
+
+function checkCrateOnTarget() {
+    if (currentLevel !== 3 || isTargetActive) return;
+    if (crateX === targetX && crateY === targetY) {
+        isTargetActive = true;
+        spawnApple();
+    }
+}
+
 function checkAppleCollision() {
     if(appleX === headX && appleY === headY) {
-        spawnApple();
+        if (currentLevel === 3 && !isTargetActive) return;
         tailLength++;
         score++;
         foodSound.play();
+
+        if (currentLevel === 3) {
+            isTargetActive = false;
+            do {
+                targetX = Math.floor(Math.random() * (tileCount - 4)) + 2;
+                targetY = Math.floor(Math.random() * (tileCount - 4)) + 2;
+            } while (targetX === 10 || (targetX === portalA.x && targetY === portalA.y)
+                || (targetX === portalB.x && targetY === portalB.y));
+            resetCrate(-1, -1);
+        } else {
+            spawnApple();
+        }
     }
 }
 

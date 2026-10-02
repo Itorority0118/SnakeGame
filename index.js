@@ -19,6 +19,7 @@ let tailLength = 2;
 let appleX = 5;
 let appleY = 5;
 
+// level 3
 let crateX = 8;
 let crateY = 8;
 let targetX = 15;
@@ -29,8 +30,13 @@ let portalB = {x:16, y:10};
 const PORTAL_COOLDOWN = 10000;
 let crateTeleportReadyAt = 0;
 
+// level 4
+const MINE_COUNT = 20;
+let mines = [];
+
 let currentLevel = 1;
 
+// level 2 walls
 const walls = [
     {x: 2, y: 2}, {x: 3, y: 2}, {x: 4, y: 2}, {x: 2, y: 3}, {x: 2, y: 4},
     {x: 15, y: 2}, {x: 16, y: 2}, {x: 17, y: 2}, {x: 17, y: 3}, {x: 17, y: 4},
@@ -46,6 +52,7 @@ const walls = [
     {x: 9, y: 9}, {x: 9, y: 10}
 ];
 
+// level 3 walls
 const level3Walls = [
     {x: 10, y: 0}, {x: 10, y: 1}, {x: 10, y: 2}, {x: 10, y: 3}, {x: 10, y: 4},
     {x: 10, y: 5}, {x: 10, y: 6}, {x: 10, y: 7}, {x: 10, y: 8}, {x: 10, y: 9},
@@ -74,7 +81,7 @@ function startGame() {
         case 1: speed = 6; break;
         case 2: speed = 9; break;
         case 3: speed = 7; break;
-        case 4: speed = 15; break;
+        case 4: speed = 6; break;
         case 5: speed = 18; break;
     }
 
@@ -94,6 +101,11 @@ function startGame() {
     targetY = 15;
     crateTeleportReadyAt = 0;
     isTargetActive = false;
+
+    if(currentLevel === 4) {
+        generateMines();
+        spawnApple();
+    }
 
     drawGame();
 }
@@ -117,6 +129,7 @@ function drawGame() {
     clearScreen();
     drawWalls();
     drawLevel3();
+    drawLevel4();
     checkAppleCollision();
     drawApple();
     drawSnake();
@@ -156,6 +169,15 @@ function isGameOver() {
         for(let i = 0; i < level3Walls.length; i++) {
             let wall = level3Walls[i];
             if(headX === wall.x && headY === wall.y) {
+                gameOver = true;
+                break;
+            }
+        }
+    }
+
+    if(currentLevel === 4) {
+        for(let i = 0; i < mines.length; i++) {
+            if(headX === mines[i].x && headY === mines[i].y) {
                 gameOver = true;
                 break;
             }
@@ -217,6 +239,24 @@ function drawLevel3() {
             context.fillStyle = 'brown';
         }
         context.fillRect(crateX * gridStep, crateY * gridStep, tileSize, tileSize);
+    }
+}
+
+function drawLevel4 () {
+    if(currentLevel !== 4) return;
+    for(let i = 0; i < mines.length; i++) {
+        let mine = mines[i];
+        let disX = Math.abs(headX - mine.x);
+        let disY = Math.abs(headY - mine.y);
+        let dis = Math.max(disX, disY);
+
+        if(dis === 1) {
+            context.fillStyle = 'rgba(255, 0, 0, 0.4)';
+            context.fillRect(mine.x * gridStep, mine.y * gridStep, tileSize, tileSize);
+        } else if (dis === 2) {
+            context.fillStyle = 'rgba(255, 255, 0, 0.25)';
+            context.fillRect(mine.x * gridStep, mine.y * gridStep, tileSize, tileSize);
+        }
     }
 }
 
@@ -352,6 +392,15 @@ function spawnApple() {
             }
         }
 
+        if(currentLevel === 4) {
+            for(let i = 0; i < mines.length; i++) {
+                if(appleX === mines[i].x && appleY === mines[i].y) {
+                    appleOnSnake = true;
+                    break;
+                }
+            }
+        }
+
         for(let i = 0; i < snakeParts.length; i++) {
             let part = snakeParts[i];
             if(part.x === appleX && part.y === appleY) {
@@ -426,6 +475,27 @@ function checkAppleCollision() {
             resetCrate(-1, -1);
         } else {
             spawnApple();
+        }
+    }
+}
+
+function generateMines() {
+    mines = [];
+    while(mines.length < MINE_COUNT) {
+        let mx = Math.floor(Math.random() * tileCount);
+        let my = Math.floor(Math.random() * tileCount);
+        if (Math.abs(mx - 12) <= 2 && Math.abs(my - 12) <= 2) continue;
+
+        let hasMine = false;
+        for(let i = 0; i < mines.length; i++) {
+            if(mines[i].x === mx && mines[i].y === my) {
+                hasMine = true;
+                break;
+            }
+        }
+
+        if(hasMine === false) {
+            mines.push({x: mx, y: my});
         }
     }
 }

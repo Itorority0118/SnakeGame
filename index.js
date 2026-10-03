@@ -31,8 +31,14 @@ const PORTAL_COOLDOWN = 10000;
 let crateTeleportReadyAt = 0;
 
 // level 4
-const MINE_COUNT = 20;
-let mines = [];
+const FIXED_MINE_COUNT = 5;
+const DYNAMIC_MINE_COUNT = 5;
+let fixedMines = [];
+let dynamicMines = [];
+let poisonAppleX = -1;
+let poisonAppleY = -1;
+let isPoisoned = false;
+let poisonSteps = 0;
 
 let currentLevel = 1;
 
@@ -104,7 +110,9 @@ function startGame() {
 
     if(currentLevel === 4) {
         generateMines();
+        spawnPoisonApple()
         spawnApple();
+        isPoisoned = false;
     }
 
     drawGame();
@@ -176,8 +184,15 @@ function isGameOver() {
     }
 
     if(currentLevel === 4) {
-        for(let i = 0; i < mines.length; i++) {
-            if(headX === mines[i].x && headY === mines[i].y) {
+        for(let i = 0; i < fixedMines.length; i++) {
+            if(headX === fixedMines[i].x && headY === fixedMines[i].y) {
+                gameOver = true;
+                break;
+            }
+        }
+
+        for(let i = 0; i < dynamicMines.length; i++) {
+            if(headX === dynamicMines[i].x && headY === dynamicMines[i].y) {
                 gameOver = true;
                 break;
             }
@@ -244,8 +259,13 @@ function drawLevel3() {
 
 function drawLevel4 () {
     if(currentLevel !== 4) return;
-    for(let i = 0; i < mines.length; i++) {
-        let mine = mines[i];
+    checkAndDrawMineWarning(fixedMines);
+    checkAndDrawMineWarning(dynamicMines);
+}
+
+function checkAndDrawMineWarning(mineList) {
+    for(let i = 0; i < mineList.length; i++) {
+        let mine = mineList[i];
         let disX = Math.abs(headX - mine.x);
         let disY = Math.abs(headY - mine.y);
         let dis = Math.max(disX, disY);
@@ -278,7 +298,11 @@ function drawSnake() {
         context.fillRect(part.x * gridStep, part.y * gridStep, tileSize, tileSize);
     }
 
-    context.fillStyle = 'white';
+    if(isPoisoned) {
+        context.fillStyle = 'purple';
+    } else {
+        context.fillStyle = 'white';
+    }
     context.fillRect(headX * gridStep, headY * gridStep, tileSize, tileSize);
 }
 
@@ -351,12 +375,24 @@ function changeSnakePosition() {
             snakeParts.shift();
         }
     }
+
+    if(isPoisoned) {
+        poisonSteps = poisonSteps - 1;
+        if(poisonSteps <= 0) {
+            isPoisoned = false;
+        }
+    }
 }
 
 function drawApple() {
     if (currentLevel === 3 && !isTargetActive) return;
     context.fillStyle = 'red';
     context.fillRect(appleX * gridStep, appleY * gridStep, tileSize, tileSize);
+
+    if(currentLevel === 4 && poisonAppleX !== -1) {
+        context.fillStyle = 'purple';
+        context.fillRect(poisonAppleX * gridStep, poisonAppleY * gridStep, tileSize, tileSize);
+    }
 }
 
 function spawnApple() {
@@ -393,8 +429,15 @@ function spawnApple() {
         }
 
         if(currentLevel === 4) {
-            for(let i = 0; i < mines.length; i++) {
-                if(appleX === mines[i].x && appleY === mines[i].y) {
+            for(let i = 0; i < fixedMines.length; i++) {
+                if(appleX === fixedMines[i].x && appleY === fixedMines[i].y) {
+                    appleOnSnake = true;
+                    break;
+                }
+            }
+
+            for(let i = 0; i < dynamicMines.length; i++) {
+                if(appleX === dynamicMines[i].x && appleY === dynamicMines[i].y) {
                     appleOnSnake = true;
                     break;
                 }
@@ -405,6 +448,32 @@ function spawnApple() {
             let part = snakeParts[i];
             if(part.x === appleX && part.y === appleY) {
                 appleOnSnake = true;
+                break;
+            }
+        }
+    }
+}
+
+function spawnPoisonApple() {
+    let valid = false;
+    while(!valid) {
+        poisonAppleX = Math.floor(Math.random() * tileCount);
+        poisonAppleY = Math.floor(Math.random() * tileCount);
+        valid = true;
+
+        if(poisonAppleX === headX && poisonAppleY === headY) valid = false;
+        if(poisonAppleX === appleX && poisonAppleY === appleY) valid = false;
+
+        for(let i = 0; i < fixedMines.length; i++) {
+            if(poisonAppleX === fixedMines[i].x && poisonAppleY === fixedMines[i].y) {
+                valid = false;
+                break;
+            }
+        }
+
+        for(let i = 0; i < dynamicMines.length; i++) {
+            if(poisonAppleX === dynamicMines[i].x && poisonAppleY === dynamicMines[i].y) {
+                valid = false;
                 break;
             }
         }
@@ -474,28 +543,75 @@ function checkAppleCollision() {
                 || (targetX === portalB.x && targetY === portalB.y));
             resetCrate(-1, -1);
         } else {
+            if(currentLevel === 4){
+                relocateDynamicMines();
+            }
             spawnApple();
         }
+    }
+
+    if (currentLevel === 4 && headX === poisonAppleX && headY === poisonAppleY) {
+        score = score + 3;
+        isPoisoned = true;
+        poisonSteps = 10;
+        spawnPoisonApple();
     }
 }
 
 function generateMines() {
-    mines = [];
-    while(mines.length < MINE_COUNT) {
+    fixedMines = [];
+    while(fixedMines.length < FIXED_MINE_COUNT) {
         let mx = Math.floor(Math.random() * tileCount);
         let my = Math.floor(Math.random() * tileCount);
         if (Math.abs(mx - 12) <= 2 && Math.abs(my - 12) <= 2) continue;
 
         let hasMine = false;
-        for(let i = 0; i < mines.length; i++) {
-            if(mines[i].x === mx && mines[i].y === my) {
+        for(let i = 0; i < fixedMines.length; i++) {
+            if(fixedMines[i].x === mx && fixedMines[i].y === my) {
                 hasMine = true;
                 break;
             }
         }
 
         if(hasMine === false) {
-            mines.push({x: mx, y: my});
+            fixedMines.push({x: mx, y: my});
+        }
+    }
+    relocateDynamicMines();
+}
+
+function relocateDynamicMines() {
+    dynamicMines = [];
+    while(dynamicMines.length < DYNAMIC_MINE_COUNT) {
+        let mx = Math.floor(Math.random() * tileCount);
+        let my = Math.floor(Math.random() * tileCount);
+        if(mx === headX && my === headY) continue;
+        if(mx === appleX && my === headY) continue;
+        let hasMine = false;
+
+        for(let i = 0; i < fixedMines.length; i++) {
+            if(fixedMines[i].x === mx && fixedMines[i].y === my) {
+                hasMine = true;
+                break;
+            }
+        }
+
+        for(let i = 0; i < dynamicMines.length; i++) {
+            if(dynamicMines[i].x === mx && dynamicMines[i].y === my) {
+                hasMine = true;
+                break;
+            }
+        }
+
+        for(let i = 0; i < snakeParts.length; i++) {
+            if(snakeParts[i].x === mx && snakeParts[i].y === my) {
+                hasMine = true;
+                break;
+            }
+        }
+
+        if(hasMine === false) {
+            dynamicMines.push({x: mx, y: my});
         }
     }
 }
@@ -504,7 +620,28 @@ document.addEventListener('keydown', keyDown);
 
 function keyDown(event) {
     if(isChangingDirection) return;
-    const key = event.keyCode;
+    let key = event.keyCode;
+
+    if(isPoisoned) {
+        if (key === 38) {
+            key = 40;
+        } else if (key === 40) {
+            key = 38;
+        } else if (key === 37) {
+            key = 39;
+        } else if (key === 39) {
+            key = 37;
+        } else if (key === 87) {
+            key = 83;
+        } else if (key === 83) {
+            key = 87;
+        } else if (key === 65) {
+            key = 68;
+        } else if (key === 68) {
+            key = 65;
+        }
+    }
+
     // up
     if((key === 38 || key === 87) && yVelocity !== 1)  {
         xVelocity = 0;

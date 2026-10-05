@@ -19,6 +19,12 @@ let tailLength = 2;
 let appleX = 5;
 let appleY = 5;
 
+// level 1
+const LEVEL1_TARGET = 30;
+
+// level 2
+const LEVEL2_TARGET = 20;
+
 // level 3
 let crateX = 8;
 let crateY = 8;
@@ -29,6 +35,7 @@ let portalA = {x:3, y:10};
 let portalB = {x:16, y:10};
 const PORTAL_COOLDOWN = 10000;
 let crateTeleportReadyAt = 0;
+const LEVEL3_TARGET = 10;
 
 // level 4
 const FIXED_MINE_COUNT = 5;
@@ -39,6 +46,13 @@ let poisonAppleX = -1;
 let poisonAppleY = -1;
 let isPoisoned = false;
 let poisonSteps = 0;
+let poisonStepsTaken = 0;
+const LEVEL4_TARGET_STEPS = 50;
+
+// level 5
+let appleMoveCounter = 0;
+const APPLE_MOVE_STEPS = 3;
+const LEVEL5_TARGET = 15;
 
 let currentLevel = 1;
 
@@ -88,7 +102,7 @@ function startGame() {
         case 2: speed = 9; break;
         case 3: speed = 7; break;
         case 4: speed = 6; break;
-        case 5: speed = 18; break;
+        case 5: speed = 7; break;
     }
 
     document.getElementById('main-menu').classList.add('hidden');
@@ -113,6 +127,12 @@ function startGame() {
         spawnPoisonApple()
         spawnApple();
         isPoisoned = false;
+        poisonStepsTaken = 0;
+    }
+
+    if(currentLevel === 5){
+        appleMoveCounter = 0;
+        spawnApple();
     }
 
     drawGame();
@@ -134,11 +154,15 @@ function drawGame() {
     changeSnakePosition();
     checkCrateOnTarget();
     if(isGameOver()) return;
+
     clearScreen();
     drawWalls();
     drawLevel3();
     drawLevel4();
     checkAppleCollision();
+
+    if(checkWinCondition()) return;
+
     drawApple();
     drawSnake();
     drawScore();
@@ -151,7 +175,8 @@ function isGameOver() {
     let gameOver = false;
 
     // walls
-    if(currentLevel !== 1 && currentLevel !== 3) {
+    if(currentLevel !== 1 && currentLevel !== 2 && currentLevel !== 3
+        && currentLevel !== 4 && currentLevel !== 5) {
         if (headX < 0) {
             gameOver = true;
         } else if (headX === tileCount) {
@@ -283,7 +308,20 @@ function checkAndDrawMineWarning(mineList) {
 function drawScore() {
     context.fillStyle = 'white';
     context.font = '20px Arial';
-    context.fillText('Score ' + score, canvas.width - 100, 23);
+
+    if (currentLevel === 1) {
+        context.fillText(`Score: ${score} | Target: ${LEVEL1_TARGET}`, 10, 25);
+    } else if (currentLevel === 2) {
+        context.fillText(`Score: ${score} | Target: ${LEVEL2_TARGET}`, 10, 25);
+    } else if (currentLevel === 3) {
+        context.fillText(`Score: ${score} | Target: ${LEVEL3_TARGET}`, 10, 25);
+    } else if (currentLevel === 4) {
+        context.fillText(`Poison Steps: ${poisonStepsTaken}/${LEVEL4_TARGET_STEPS}`, 10, 25);
+    } else if (currentLevel === 5) {
+        context.fillText(`Score: ${score} | Target: ${LEVEL5_TARGET}`, 10, 25);
+    } else {
+        context.fillText(`Score: ${score}`, 10, 25);
+    }
 }
 
 function clearScreen() {
@@ -310,7 +348,8 @@ function changeSnakePosition() {
     let nextX = headX + xVelocity;
     let nextY = headY + yVelocity;
 
-    if (currentLevel === 1 || currentLevel === 3) {
+    if (currentLevel === 1 || currentLevel === 2 || currentLevel === 3
+        || currentLevel === 4 || currentLevel === 5) {
         if (nextX < 0) {
             nextX = tileCount - 1;
         }
@@ -366,6 +405,14 @@ function changeSnakePosition() {
         }
     }
 
+    if(currentLevel === 5 && (xVelocity !== 0 || yVelocity !== 0)) {
+        appleMoveCounter++;
+        if(appleMoveCounter >= APPLE_MOVE_STEPS) {
+            moveAppleRandom();
+            appleMoveCounter = 0;
+        }
+    }
+
     headX = nextX;
     headY = nextY;
 
@@ -378,6 +425,10 @@ function changeSnakePosition() {
 
     if(isPoisoned) {
         poisonSteps = poisonSteps - 1;
+        if (xVelocity !== 0 || yVelocity !== 0) {
+            poisonStepsTaken++;
+        }
+
         if(poisonSteps <= 0) {
             isPoisoned = false;
         }
@@ -385,17 +436,19 @@ function changeSnakePosition() {
 }
 
 function drawApple() {
-    if (currentLevel === 3 && !isTargetActive) return;
-    context.fillStyle = 'red';
-    context.fillRect(appleX * gridStep, appleY * gridStep, tileSize, tileSize);
+    if (!(currentLevel === 3 && !isTargetActive) && currentLevel !== 4) {
+        context.fillStyle = 'red';
+        context.fillRect(appleX * gridStep, appleY * gridStep, tileSize, tileSize);
+    }
 
-    if(currentLevel === 4 && poisonAppleX !== -1) {
+    if (currentLevel === 4 && poisonAppleX !== -1) {
         context.fillStyle = 'purple';
         context.fillRect(poisonAppleX * gridStep, poisonAppleY * gridStep, tileSize, tileSize);
     }
 }
 
 function spawnApple() {
+    if(currentLevel === 4) return;
     let appleOnSnake = true;
     while(appleOnSnake) {
         appleX = Math.floor(Math.random() * tileCount);
@@ -428,22 +481,6 @@ function spawnApple() {
             }
         }
 
-        if(currentLevel === 4) {
-            for(let i = 0; i < fixedMines.length; i++) {
-                if(appleX === fixedMines[i].x && appleY === fixedMines[i].y) {
-                    appleOnSnake = true;
-                    break;
-                }
-            }
-
-            for(let i = 0; i < dynamicMines.length; i++) {
-                if(appleX === dynamicMines[i].x && appleY === dynamicMines[i].y) {
-                    appleOnSnake = true;
-                    break;
-                }
-            }
-        }
-
         for(let i = 0; i < snakeParts.length; i++) {
             let part = snakeParts[i];
             if(part.x === appleX && part.y === appleY) {
@@ -451,6 +488,37 @@ function spawnApple() {
                 break;
             }
         }
+    }
+}
+
+function moveAppleRandom() {
+    let directions = [{x:0, y:-1}, {x:0, y:1}, {x:-1, y:0}, {x:1, y:0}];
+    let validMoves = [];
+
+    for(let i = 0; i <directions.length; i++) {
+        let newX = appleX + directions[i].x;
+        let newY = appleY + directions[i].y;
+        if(newX >= 0 && newX < tileCount && newY >= 0 && newY < tileCount) {
+            let onSnake = false;
+            if(newX === headX && newY === headY) {
+                onSnake = true;
+            }
+            for(let j = 0; j < snakeParts.length; j++) {
+                if(snakeParts[j].x === newX && snakeParts[j].y === newY) {
+                    onSnake = true;
+                    break;
+                }
+            }
+            if(!onSnake) {
+                validMoves.push({x: newX, y: newY});
+            }
+        }
+    }
+
+    if(validMoves.length > 0) {
+        let randomMoves = validMoves[Math.floor(Math.random() * validMoves.length)];
+        appleX = randomMoves.x;
+        appleY = randomMoves.y;
     }
 }
 
@@ -462,7 +530,7 @@ function spawnPoisonApple() {
         valid = true;
 
         if(poisonAppleX === headX && poisonAppleY === headY) valid = false;
-        if(poisonAppleX === appleX && poisonAppleY === appleY) valid = false;
+        // if(poisonAppleX === appleX && poisonAppleY === appleY) valid = false;
 
         for(let i = 0; i < fixedMines.length; i++) {
             if(poisonAppleX === fixedMines[i].x && poisonAppleY === fixedMines[i].y) {
@@ -534,6 +602,10 @@ function checkAppleCollision() {
         score++;
         foodSound.play();
 
+        if(currentLevel === 4 && isPoisoned) {
+            poisonModeScore++;
+        }
+
         if (currentLevel === 3) {
             isTargetActive = false;
             do {
@@ -556,6 +628,60 @@ function checkAppleCollision() {
         poisonSteps = 10;
         spawnPoisonApple();
     }
+}
+
+function checkWinCondition() {
+    if (currentLevel === 1 && score >= LEVEL1_TARGET) {
+        context.fillStyle = 'gold';
+        context.font = '40px Arial';
+        context.textAlign = 'center';
+        context.fillText('LEVEL 1 COMPLETED!', canvas.width / 2, canvas.height / 2);
+        context.textAlign = 'left';
+        setTimeout(showMenu, 1500);
+        return true;
+    }
+
+    if (currentLevel === 2 && score >= LEVEL2_TARGET) {
+        context.fillStyle = 'gold';
+        context.font = '40px Arial';
+        context.textAlign = 'center';
+        context.fillText('LEVEL 2 COMPLETED!', canvas.width / 2, canvas.height / 2);
+        context.textAlign = 'left';
+        setTimeout(showMenu, 1500);
+        return true;
+    }
+
+    if (currentLevel === 3 && score >= LEVEL3_TARGET) {
+        context.fillStyle = 'gold';
+        context.font = '40px Arial';
+        context.textAlign = 'center';
+        context.fillText('LEVEL 3 COMPLETED!', canvas.width / 2, canvas.height / 2);
+        context.textAlign = 'left';
+        setTimeout(showMenu, 1500);
+        return true;
+    }
+
+    if (currentLevel === 4 && poisonStepsTaken >= LEVEL4_TARGET_STEPS) {
+        context.fillStyle = 'gold';
+        context.font = '40px Arial';
+        context.textAlign = 'center';
+        context.fillText('LEVEL 4 COMPLETED!', canvas.width / 2, canvas.height / 2);
+        context.textAlign = 'left';
+        setTimeout(showMenu, 1500);
+        return true;
+    }
+
+    if (currentLevel === 5 && score >= LEVEL5_TARGET) {
+        context.fillStyle = 'gold';
+        context.font = '40px Arial';
+        context.textAlign = 'center';
+        context.fillText('LEVEL 5 COMPLETED!', canvas.width / 2, canvas.height / 2);
+        context.textAlign = 'left';
+        setTimeout(showMenu, 1500);
+        return true;
+    }
+
+    return false;
 }
 
 function generateMines() {

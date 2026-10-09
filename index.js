@@ -73,6 +73,15 @@ const GHOST_MOVE_STEPS = 1;
 const GHOST_STUN_TICKS = 8;
 const LEVEL8_TARGET = 20;
 
+// level 9
+const LEVEL9_TARGET = 20;
+
+// level 10
+const PAST_GAP = 5;
+let headHistory = [];
+let pastParts = [];
+const LEVEL10_TARGET = 30;
+
 let currentLevel = 1;
 
 // level 3 walls
@@ -116,6 +125,19 @@ const level7Walls = [
     {x: 8, y: 15}, {x: 9, y: 15}, {x: 10, y: 15}
 ];
 
+// level 9 walls
+const LEVEL9_BASE_WALLS = [
+    {x: 4, y: 4}, {x: 5, y: 4}, {x: 6, y: 4}, {x: 7, y: 4},
+    {x: 14, y: 8}, {x: 14, y: 9}, {x: 14, y: 10}, {x: 14, y: 11}, {x: 14, y: 12},
+    {x: 3, y: 14}, {x: 4, y: 14}, {x: 5, y: 14}, {x: 3, y: 15},
+    {x: 10, y: 6}, {x: 11, y: 6}, {x: 12, y: 6},
+    {x: 16, y: 3}, {x: 17, y: 3}, {x: 17, y: 4},
+    {x: 7, y: 9}, {x: 7, y: 10}, {x: 7, y: 11}, {x: 7, y: 12},
+    {x: 10, y: 17}, {x: 11, y: 17}, {x: 12, y: 17}, {x: 13, y: 17},
+    {x: 16, y: 15}, {x: 16, y: 16}, {x: 16, y: 17}
+];
+let level9Walls = [];
+
 let speed = 8;
 let xVelocity = 0;
 let yVelocity = 0;
@@ -126,7 +148,7 @@ const foodSound = new Audio('food.mp3');
 
 function pickLevel() {
     currentLevel++;
-    if(currentLevel > 8) {
+    if(currentLevel > 10) {
         currentLevel = 1;
     }
     document.getElementById('level-btn').innerText = 'LEVEL ' + currentLevel;
@@ -142,6 +164,8 @@ function startGame() {
         case 6: speed = 7; break;
         case 7: speed = 7; break;
         case 8: speed = 8; break;
+        case 9: speed = 8; break;
+        case 10: speed = 8; break;
     }
 
     document.getElementById('main-menu').classList.add('hidden');
@@ -191,6 +215,19 @@ function startGame() {
         spawnApple();
     }
 
+    if(currentLevel === 9) {
+        level9Walls = [];
+        for(let i = 0; i < LEVEL9_BASE_WALLS.length; i++) {
+            level9Walls.push({x: LEVEL9_BASE_WALLS[i].x, y: LEVEL9_BASE_WALLS[i].y});
+        }
+        spawnApple();
+    }
+
+    if(currentLevel === 10) {
+        headHistory = [];
+        pastParts = [];
+        spawnApple();
+    }
     drawGame();
 }
 
@@ -221,6 +258,7 @@ function drawGame() {
 
     drawApple();
     drawGhost()
+    drawPast();
     drawSnake();
     drawFog();
     drawScore();
@@ -234,7 +272,7 @@ function isGameOver() {
 
     // walls
     if(currentLevel !== 1 && currentLevel !== 2 && currentLevel !== 5
-        && currentLevel !== 6 && currentLevel !== 7 && currentLevel !== 8) {
+        && currentLevel !== 6 && currentLevel !== 7 && currentLevel !== 8 && currentLevel !== 10) {
         if (headX < 0) {
             gameOver = true;
         } else if (headX === tileCount) {
@@ -299,8 +337,27 @@ function isGameOver() {
             }
         }
     }
+
     if (currentLevel === 8 && headX === ghostX && headY === ghostY) {
         gameOver = true;
+    }
+
+    if (currentLevel === 9) {
+        for (let i = 0; i < level9Walls.length; i++) {
+            if (headX === level9Walls[i].x && headY === level9Walls[i].y) {
+                gameOver = true;
+                break;
+            }
+        }
+    }
+
+    if(currentLevel === 10) {
+        for(let i = 0; i < pastParts.length; i++) {
+            if(headX === pastParts[i].x && headY === pastParts[i].y) {
+                gameOver = true;
+                break;
+            }
+        }
     }
 
     for(let i = 0; i < snakeParts.length - 1; i++) {
@@ -345,6 +402,12 @@ function drawWalls() {
     if (currentLevel === 7) {
         for (let i = 0; i < level7Walls.length; i++) {
             context.fillRect(level7Walls[i].x * gridStep, level7Walls[i].y * gridStep, tileSize, tileSize);
+        }
+    }
+
+    if (currentLevel === 9) {
+        for (let i = 0; i < level9Walls.length; i++) {
+            context.fillRect(level9Walls[i].x * gridStep, level9Walls[i].y * gridStep, tileSize, tileSize);
         }
     }
 }
@@ -450,6 +513,10 @@ function drawScore() {
         context.fillText(`Score: ${score} | Target: ${LEVEL7_TARGET}`, 10, 25);
     } else if (currentLevel === 8) {
         context.fillText(`Score: ${score} | Target: ${LEVEL8_TARGET}`, 10, 25);
+    } else if (currentLevel === 9) {
+        context.fillText(`Score: ${score} | Target: ${LEVEL9_TARGET}`, 10, 25);
+    } else if (currentLevel === 10) {
+        context.fillText(`Score: ${score} | Target: ${LEVEL10_TARGET}`, 10, 25);
     } else {
         context.fillText(`Score: ${score}`, 10, 25);
     }
@@ -480,7 +547,7 @@ function changeSnakePosition() {
     let nextY = headY + yVelocity;
 
     if (currentLevel === 1 || currentLevel === 2 || currentLevel === 5
-        || currentLevel === 6 || currentLevel === 7 || currentLevel === 8) {
+        || currentLevel === 6 || currentLevel === 7 || currentLevel === 8 || currentLevel === 10) {
         if (nextX < 0) {
             nextX = tileCount - 1;
         }
@@ -551,6 +618,22 @@ function changeSnakePosition() {
         snakeParts.push(new SnakePart(headX, headY));
         while (snakeParts.length > tailLength) {
             snakeParts.shift();
+        }
+    }
+
+    if(currentLevel === 10 && (xVelocity !== 0 || yVelocity !== 0)) {
+        let pastDelay = tailLength + PAST_GAP;
+        headHistory.push({x: headX, y: headY});
+        while(headHistory.length > pastDelay + tailLength) {
+            headHistory.shift();
+        }
+
+        pastParts = [];
+        if(headHistory.length > pastDelay) {
+            let start = headHistory.length - 1 - pastDelay;
+            for(let i = start; i >= 0 && pastParts.length < tailLength; i--) {
+                pastParts.push({x: headHistory[i].x, y: headHistory[i].y});
+            }
         }
     }
 
@@ -634,6 +717,25 @@ function spawnApple() {
             }
         }
 
+        if(currentLevel === 9) {
+            for(let i = 0; i < level9Walls.length; i++) {
+                let wall = level9Walls[i];
+                if(appleX === wall.x && appleY === wall.y) {
+                    appleOnSnake = true;
+                    break;
+                }
+            }
+        }
+
+        if(currentLevel === 10) {
+            for(let i = 0; i < pastParts.length; i++) {
+                if(appleX === pastParts[i].x && appleY === pastParts[i].y) {
+                    appleOnSnake = true;
+                    break;
+                }
+            }
+        }
+
         for(let i = 0; i < snakeParts.length; i++) {
             let part = snakeParts[i];
             if(part.x === appleX && part.y === appleY) {
@@ -697,6 +799,14 @@ function drawGhost() {
     if(currentLevel !== 8) return;
     context.fillStyle = ghostStun > 0 ? 'gray' : 'cyan';
     context.fillRect(ghostX * gridStep, ghostY * gridStep, tileSize, tileSize);
+}
+
+function drawPast() {
+    if(currentLevel !== 10) return;
+    context.fillStyle = 'rgba(120, 160, 255, 0.6)';
+    for(let i = 0; i < pastParts.length; i++) {
+        context.fillRect(pastParts[i].x * gridStep, pastParts[i].y * gridStep, tileSize, tileSize);
+    }
 }
 
 function spawnPoisonApple() {
@@ -789,6 +899,9 @@ function checkAppleCollision() {
             if(currentLevel === 8) {
                 ghostStun = GHOST_STUN_TICKS;
             }
+            if(currentLevel === 9) {
+                rotateWorld();
+            }
             spawnApple();
         }
     }
@@ -842,6 +955,16 @@ function checkWinCondition() {
         return true;
     }
 
+    if (currentLevel === 9 && score >= LEVEL9_TARGET) {
+        displayWinText('LEVEL 9 COMPLETED!');
+        return true;
+    }
+
+    if (currentLevel === 10 && score >= LEVEL10_TARGET) {
+        displayWinText('LEVEL 10 COMPLETED!');
+        return true;
+    }
+
     return false;
 }
 
@@ -876,13 +999,61 @@ function generateMines() {
     relocateDynamicMines();
 }
 
+function rotatePoint(p) {
+    const nx = tileCount - 1 - p.y;
+    const ny = p.x;
+    p.x = nx;
+    p.y = ny;
+}
+
+function rotateWorld() {
+    const hx = tileCount - 1 - headY;
+    const hy = headX;
+    headX = hx;
+    headY = hy;
+
+    const vx = -yVelocity;
+    const vy = xVelocity;
+    xVelocity = vx;
+    yVelocity = vy;
+    for(let i = 0; i < snakeParts.length; i++) {
+        rotatePoint(snakeParts[i]);
+    }
+    for(let i = 0; i < level9Walls.length; i++) {
+        rotatePoint(level9Walls[i]);
+    }
+
+    let newWalls = [];
+    for(let i = 0; i < level9Walls.length; i++) {
+        let wall = level9Walls[i];
+        let keepWall = true;
+        let disX = Math.abs(wall.x - headX);
+        let disY = Math.abs(wall.y - headY);
+        if(disX <= 2 && disY <= 2) {
+            keepWall = false;
+        }
+
+        for(let j = 0; j < snakeParts.length; j++) {
+            if(snakeParts[j].x === wall.x && snakeParts[j].y === wall.y) {
+                keepWall = false;
+                break;
+            }
+        }
+
+        if(keepWall) {
+            newWalls.push(wall);
+        }
+    }
+    level9Walls = newWalls;
+}
+
 function relocateDynamicMines() {
     dynamicMines = [];
     while(dynamicMines.length < DYNAMIC_MINE_COUNT) {
         let mx = Math.floor(Math.random() * tileCount);
         let my = Math.floor(Math.random() * tileCount);
         if(mx === headX && my === headY) continue;
-        if(mx === appleX && my === headY) continue;
+        if(mx === appleX && my === appleY) continue;
         let hasMine = false;
 
         for(let i = 0; i < fixedMines.length; i++) {

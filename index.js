@@ -20,12 +20,12 @@ let appleX = 5;
 let appleY = 5;
 
 // level 1
-const LEVEL1_TARGET = 30;
+const LEVEL1_TARGET = 20;
 
 // level 2
 let appleMoveCounter = 0;
 const APPLE_MOVE_STEPS = 2;
-const LEVEL2_TARGET = 30;
+const LEVEL2_TARGET = 20;
 
 // level 3
 const LEVEL3_TARGET = 20;
@@ -36,14 +36,14 @@ let poisonAppleY = -1;
 let isPoisoned = false;
 let poisonSteps = 0;
 let poisonStepsTaken = 0;
-const LEVEL4_TARGET_STEPS = 50;
+const LEVEL4_TARGET_STEPS = 30;
 
 // level 5
 const FIXED_MINE_COUNT = 5;
 const DYNAMIC_MINE_COUNT = 5;
 let fixedMines = [];
 let dynamicMines = [];
-const LEVEL5_TARGET = 20;
+const LEVEL5_TARGET = 15;
 
 // level 6
 let crateX = 8;
@@ -55,14 +55,13 @@ let portalA = {x:3, y:10};
 let portalB = {x:16, y:10};
 const PORTAL_COOLDOWN = 10000;
 let crateTeleportReadyAt = 0;
-const LEVEL6_TARGET = 10;
+const LEVEL6_TARGET = 5;
 
 // level 7
-let visionRange = 3;
-let wallMoveCounter = 0;
-const WALL_MOVE_STEPS = 4;
-let wallDirection = 1;
-const LEVEL7_TARGET = 15;
+const PAST_GAP = 5;
+let headHistory = [];
+let pastParts = [];
+const LEVEL7_TARGET = 20;
 
 // level 8
 let ghostX = 2;
@@ -71,16 +70,10 @@ let ghostCounter = 0;
 let ghostStun = 0;
 const GHOST_MOVE_STEPS = 1;
 const GHOST_STUN_TICKS = 8;
-const LEVEL8_TARGET = 20;
+const LEVEL8_TARGET = 15;
 
 // level 9
 const LEVEL9_TARGET = 20;
-
-// level 10
-const PAST_GAP = 5;
-let headHistory = [];
-let pastParts = [];
-const LEVEL10_TARGET = 30;
 
 let currentLevel = 1;
 
@@ -117,14 +110,6 @@ const level6Walls = [
     {x: 10, y: 15}, {x: 10, y: 16}, {x: 10, y: 17}, {x: 10, y: 18}, {x: 10, y: 19}
 ];
 
-// level 7 walls
-const level7Walls = [
-    {x: 6, y: 6}, {x: 6, y: 7}, {x: 6, y: 8}, {x: 6, y: 9},
-    {x: 13, y: 10}, {x: 13, y: 11}, {x: 13, y: 12}, {x: 13, y: 13},
-    {x: 9, y: 4}, {x: 10, y: 4}, {x: 11, y: 4},
-    {x: 8, y: 15}, {x: 9, y: 15}, {x: 10, y: 15}
-];
-
 // level 9 walls
 const LEVEL9_BASE_WALLS = [
     {x: 4, y: 4}, {x: 5, y: 4}, {x: 6, y: 4}, {x: 7, y: 4},
@@ -143,15 +128,24 @@ let xVelocity = 0;
 let yVelocity = 0;
 
 let isChangingDirection = false;
+let gameLoopId = null;
+let isPause = false;
+let gameActive = false;
+let pauseAt = 0;
 let score = 0;
-const foodSound = new Audio('food.mp3');
 
 function pickLevel() {
     currentLevel++;
-    if(currentLevel > 10) {
+    if(currentLevel > 9) {
         currentLevel = 1;
     }
     document.getElementById('level-btn').innerText = 'LEVEL ' + currentLevel;
+    if(gameActive || isPause) {
+        clearTimeout(gameLoopId);
+        gameActive = false;
+        isPause = false;
+        document.getElementById('continue-btn').classList.add('hidden');
+    }
 }
 
 function startGame() {
@@ -162,12 +156,15 @@ function startGame() {
         case 4: speed = 8; break;
         case 5: speed = 7; break;
         case 6: speed = 7; break;
-        case 7: speed = 7; break;
+        case 7: speed = 8; break;
         case 8: speed = 8; break;
         case 9: speed = 8; break;
-        case 10: speed = 8; break;
     }
 
+    clearTimeout(gameLoopId);
+    isPause = false;
+    gameActive = true;
+    document.getElementById('continue-btn').classList.add('hidden');
     document.getElementById('main-menu').classList.add('hidden');
 
     headX = 12;
@@ -185,7 +182,7 @@ function startGame() {
     crateTeleportReadyAt = 0;
     isTargetActive = false;
 
-    if(currentLevel === 2){
+    if(currentLevel === 2) {
         appleMoveCounter = 0;
         spawnApple();
     }
@@ -203,7 +200,8 @@ function startGame() {
     }
 
     if(currentLevel === 7) {
-        wallMoveCounter = 0;
+        headHistory = [];
+        pastParts = [];
         spawnApple();
     }
 
@@ -223,24 +221,31 @@ function startGame() {
         spawnApple();
     }
 
-    if(currentLevel === 10) {
-        headHistory = [];
-        pastParts = [];
-        spawnApple();
-    }
     drawGame();
-}
-
-function openSettings() {
-    document.getElementById('settings-modal').classList.remove('hidden');
-}
-
-function closeSettings() {
-    document.getElementById('settings-modal').classList.add('hidden');
 }
 
 function showMenu() {
     document.getElementById('main-menu').classList.remove('hidden');
+}
+
+function pauseGame() {
+    if(!gameActive || isPause) return;
+    isPause = true;
+    clearTimeout(gameLoopId);
+    pauseAt = Date.now();
+    document.getElementById('continue-btn').classList.remove('hidden');
+    showMenu();
+}
+
+function continueGame() {
+    if(!gameActive || !isPause) return;
+    isPause = false;
+    if(crateTeleportReadyAt > 0) {
+        crateTeleportReadyAt += Date.now() - pauseAt;
+    }
+    document.getElementById('continue-btn').classList.add('hidden');
+    document.getElementById('main-menu').classList.add('hidden');
+    drawGame();
 }
 function drawGame() {
     isChangingDirection = false;
@@ -257,13 +262,13 @@ function drawGame() {
     if(checkWinCondition()) return;
 
     drawApple();
-    drawGhost()
+    drawGhost();
     drawPast();
     drawSnake();
-    drawFog();
     drawScore();
 
-    setTimeout(drawGame, 1000/speed);
+    gameLoopId = setTimeout(drawGame, 1000/speed);
+
 }
 
 function isGameOver() {
@@ -272,7 +277,7 @@ function isGameOver() {
 
     // walls
     if(currentLevel !== 1 && currentLevel !== 2 && currentLevel !== 5
-        && currentLevel !== 6 && currentLevel !== 7 && currentLevel !== 8 && currentLevel !== 10) {
+        && currentLevel !== 7 && currentLevel !== 8) {
         if (headX < 0) {
             gameOver = true;
         } else if (headX === tileCount) {
@@ -329,9 +334,9 @@ function isGameOver() {
         }
     }
 
-    if (currentLevel === 7) {
-        for (let i = 0; i < level7Walls.length; i++) {
-            if (headX === level7Walls[i].x && headY === level7Walls[i].y) {
+    if(currentLevel === 7) {
+        for(let i = 0; i < pastParts.length; i++) {
+            if(headX === pastParts[i].x && headY === pastParts[i].y) {
                 gameOver = true;
                 break;
             }
@@ -351,15 +356,6 @@ function isGameOver() {
         }
     }
 
-    if(currentLevel === 10) {
-        for(let i = 0; i < pastParts.length; i++) {
-            if(headX === pastParts[i].x && headY === pastParts[i].y) {
-                gameOver = true;
-                break;
-            }
-        }
-    }
-
     for(let i = 0; i < snakeParts.length - 1; i++) {
         let part = snakeParts[i];
         if(part.x === headX && part.y === headY) {
@@ -369,6 +365,7 @@ function isGameOver() {
     }
 
     if(gameOver) {
+        gameActive = false;
         context.fillStyle = 'white';
         context.font = '50px Arial';
         context.fillText('Game Over!', canvas.width/4.5, canvas.height/2);
@@ -399,51 +396,10 @@ function drawWalls() {
         }
     }
 
-    if (currentLevel === 7) {
-        for (let i = 0; i < level7Walls.length; i++) {
-            context.fillRect(level7Walls[i].x * gridStep, level7Walls[i].y * gridStep, tileSize, tileSize);
-        }
-    }
-
     if (currentLevel === 9) {
         for (let i = 0; i < level9Walls.length; i++) {
             context.fillRect(level9Walls[i].x * gridStep, level9Walls[i].y * gridStep, tileSize, tileSize);
         }
-    }
-}
-
-function drawFog() {
-    if(currentLevel === 7) {
-        for(let i = 0; i < tileCount; i++) {
-            for(let j = 0; j < tileCount; j++) {
-                let disX = Math.abs(headX - i);
-                let disY = Math.abs(headY - j);
-                let isNearHead = (disX <= visionRange && disY <= visionRange);
-
-                if(!isNearHead) {
-                    context.fillStyle = 'black';
-                    context.fillRect(i * gridStep, j * gridStep, gridStep, gridStep);
-                }
-            }
-        }
-    }
-}
-
-function moveLevel7Walls() {
-    let hitEdge = false;
-    for(let i = 0; i < level7Walls.length; i++) {
-        let newY = level7Walls[i].y + wallDirection;
-        if(newY < 0 || newY >= tileCount) {
-            hitEdge = true;
-            break;
-        }
-    }
-    if(hitEdge) {
-        wallDirection *= -1;
-    }
-
-    for(let i = 0; i < level7Walls.length; i++) {
-        level7Walls[i].y += wallDirection;
     }
 }
 
@@ -515,8 +471,6 @@ function drawScore() {
         context.fillText(`Score: ${score} | Target: ${LEVEL8_TARGET}`, 10, 25);
     } else if (currentLevel === 9) {
         context.fillText(`Score: ${score} | Target: ${LEVEL9_TARGET}`, 10, 25);
-    } else if (currentLevel === 10) {
-        context.fillText(`Score: ${score} | Target: ${LEVEL10_TARGET}`, 10, 25);
     } else {
         context.fillText(`Score: ${score}`, 10, 25);
     }
@@ -547,7 +501,7 @@ function changeSnakePosition() {
     let nextY = headY + yVelocity;
 
     if (currentLevel === 1 || currentLevel === 2 || currentLevel === 5
-        || currentLevel === 6 || currentLevel === 7 || currentLevel === 8 || currentLevel === 10) {
+        || currentLevel === 7 || currentLevel === 8) {
         if (nextX < 0) {
             nextX = tileCount - 1;
         }
@@ -621,7 +575,7 @@ function changeSnakePosition() {
         }
     }
 
-    if(currentLevel === 10 && (xVelocity !== 0 || yVelocity !== 0)) {
+    if(currentLevel === 7 && (xVelocity !== 0 || yVelocity !== 0)) {
         let pastDelay = tailLength + PAST_GAP;
         headHistory.push({x: headX, y: headY});
         while(headHistory.length > pastDelay + tailLength) {
@@ -645,14 +599,6 @@ function changeSnakePosition() {
 
         if(poisonSteps <= 0) {
             isPoisoned = false;
-        }
-    }
-
-    if (currentLevel === 7 && (xVelocity !== 0 || yVelocity !== 0)) {
-        wallMoveCounter++;
-        if (wallMoveCounter >= WALL_MOVE_STEPS) {
-            moveLevel7Walls();
-            wallMoveCounter = 0;
         }
     }
 
@@ -708,9 +654,8 @@ function spawnApple() {
         }
 
         if(currentLevel === 7) {
-            for(let i = 0; i < level7Walls.length; i++) {
-                let wall = level7Walls[i];
-                if(appleX === wall.x && appleY === wall.y) {
+            for(let i = 0; i < pastParts.length; i++) {
+                if(appleX === pastParts[i].x && appleY === pastParts[i].y) {
                     appleOnSnake = true;
                     break;
                 }
@@ -721,15 +666,6 @@ function spawnApple() {
             for(let i = 0; i < level9Walls.length; i++) {
                 let wall = level9Walls[i];
                 if(appleX === wall.x && appleY === wall.y) {
-                    appleOnSnake = true;
-                    break;
-                }
-            }
-        }
-
-        if(currentLevel === 10) {
-            for(let i = 0; i < pastParts.length; i++) {
-                if(appleX === pastParts[i].x && appleY === pastParts[i].y) {
                     appleOnSnake = true;
                     break;
                 }
@@ -802,7 +738,7 @@ function drawGhost() {
 }
 
 function drawPast() {
-    if(currentLevel !== 10) return;
+    if(currentLevel !== 7) return;
     context.fillStyle = 'rgba(120, 160, 255, 0.6)';
     for(let i = 0; i < pastParts.length; i++) {
         context.fillRect(pastParts[i].x * gridStep, pastParts[i].y * gridStep, tileSize, tileSize);
@@ -882,7 +818,6 @@ function checkAppleCollision() {
         if (currentLevel === 6 && !isTargetActive) return;
         tailLength++;
         score++;
-        foodSound.play();
 
         if (currentLevel === 6) {
             isTargetActive = false;
@@ -960,15 +895,11 @@ function checkWinCondition() {
         return true;
     }
 
-    if (currentLevel === 10 && score >= LEVEL10_TARGET) {
-        displayWinText('LEVEL 10 COMPLETED!');
-        return true;
-    }
-
     return false;
 }
 
 function displayWinText(text) {
+    gameActive = false;
     context.fillStyle = 'gold';
     context.font = '40px Arial';
     context.textAlign = 'center';
@@ -1086,9 +1017,19 @@ function relocateDynamicMines() {
 document.addEventListener('keydown', keyDown);
 
 function keyDown(event) {
-    if(isChangingDirection) return;
     let key = event.keyCode;
 
+    if(key === 27) {
+        if(isPause) {
+            continueGame();
+        } else {
+            pauseGame();
+        }
+        return;
+    }
+
+    if(isPause) return;
+    if(isChangingDirection) return;
     if(isPoisoned) {
         if (key === 38) {
             key = 40;

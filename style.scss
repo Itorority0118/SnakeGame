@@ -43,10 +43,8 @@ h1 {
   height: 300px;
   border: 2px dashed #666;
   background-color: #111;
-  /*
-  background-image:
+  background-image: url("SnakeGame.png");
   background-size: cover;
-   */
 }
 
 .button-group {
@@ -76,32 +74,15 @@ h1 {
     }
   }
 
-  #settings-btn {
+  #continue-btn {
     background-color: #ff9800;
 
     &:hover {
-      background-color: #e68a00;
+      background-color: #e68900;
     }
   }
 }
 
-.settings-box {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 250px;
-  background: #333;
-  border: 2px solid white;
-  padding: 20px;
-  text-align: center;
-  border-radius: 8px;
-
-  button {
-    padding: 6px 16px;
-    cursor: pointer;
-  }
-}
 .hidden {
   display: none !important;
 }

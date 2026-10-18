@@ -1078,3 +1078,70 @@ function keyDown(event) {
         isChangingDirection = true;
     }
 }
+
+function showHelp() {
+    let panel = document.getElementById('help-panel');
+    if(!panel.classList.contains('hidden')) {
+        panel.classList.add('hidden');
+        return;
+    }
+
+    let text = '';
+
+    switch (currentLevel) {
+        case 1:
+            text = '<h2>LEVEL 1</h2>' +
+                'Đạt 20 điểm để thắng.<br>';
+            break;
+        case 2:
+            text = '<h2>LEVEL 2</h2>' +
+                'Đạt 20 điểm để thắng.<br>' +
+                'Táo tự di chuyển sau mỗi 2 bước của bạn.';
+            break;
+        case 3:
+            text = '<h2>LEVEL 3</h2>' +
+                'Đạt 20 điểm để thắng.<br>' +
+                'Chạm tường hoặc mép màn hình là thua.';
+            break;
+        case 4:
+            text = '<h2>LEVEL 4</h2>' +
+                'Ăn táo tím sẽ bị đảo ngược hướng di chuyển 10 bước.<br>' +
+                'Đi đủ 30 bước khi bị độc để thắng.<br>' +
+                'Chạm tường hoặc mép màn hình là thua.';
+            break;
+        case 5:
+            text = '<h2>LEVEL 5</h2>' +
+                'Đạt 15 điểm để thắng.<br>' +
+                'Né mìn ẩn cố định, mìn ẩn di động (đổi chỗ mỗi lần ăn táo).<br>' +
+                'Ô đỏ là mìn cách 1 ô, ô vàng là mìn cách 2 ô.<br>' +
+                'Chạm mìn là thua.';
+            break;
+        case 6:
+            text = '<h2>LEVEL 6</h2>' +
+                'Đạt 5 điểm dể thắng.<br>' +
+                'Đẩy thùng nâu vào ô viền vàng thì táo mới hiện ra để ăn.<br>' +
+                'Trường hợp thùng bị kẹt ở tường hoặc mép màn hình thì đẩy thùng vào hai chỗ đó để đặt lại chỗ khác.<br>' +
+                'Nếu thùng và ô đích ở hai bên tường thì dùng cổng cam và cổng xanh dịch chuyển rắn và thùng.';
+            break;
+        case 7:
+            text = '<h2>LEVEL 7</h2>' +
+                'Đạt 20 điểm để thắng.<br>' +
+                'Bóng xanh nhạt là đường đi cũ của bạn.<br>' +
+                'Chạm vào bóng đó là thua.';
+            break;
+        case 8:
+            text = '<h2>LEVEL 8</h2>' +
+                'Đạt 15 điểm để thắng.<br>' +
+                'Con ma xanh đuổi theo bạn, chạm vào là thua.<br>' +
+                'Ăn táo sẽ làm ma bị choáng 8 bước.';
+            break;
+        case 9:
+            text = '<h2>LEVEL 9</h2>' +
+                'Đạt 20 điểm để thắng.<br>' +
+                'Mỗi lần ăn táo màn chơi sẽ xoay 90 độ.';
+            break;
+    }
+    panel.innerHTML = text;
+    panel.classList.remove('hidden');
+    pauseGame();
+}

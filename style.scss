@@ -41,7 +41,6 @@ h1 {
 .empty-screen {
   width: 400px;
   height: 300px;
-  border: 2px dashed #666;
   background-color: #111;
   background-image: url("SnakeGame.png");
   background-size: cover;
@@ -85,4 +84,51 @@ h1 {
 
 .hidden {
   display: none !important;
+}
+
+#help-btn {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 20;
+  padding: 6px 12px;
+  font: bold 14px Arial;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.75);
+  border: 2px solid white;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: rgba(60, 60, 60, 0.9);
+  }
+}
+
+#help-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: $page-width;
+  height: $page-width;
+  z-index: 10;
+  box-sizing: border-box;
+  padding: 20px;
+  background-color: rgba(0, 0, 0, 0.95);
+  font-size: 18px;
+  overflow: auto;
+
+  h2 {
+    margin-top: 0;
+    color: gold;
+  }
+
+  ul {
+    padding-left: 20px;
+    line-height: 1.5;
+  }
+
+  .note {
+    font-size: 15px;
+    color: #bbb;
+  }
 }

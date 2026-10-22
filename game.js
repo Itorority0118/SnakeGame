@@ -35,7 +35,7 @@ let poisonAppleX = -1;
 let poisonAppleY = -1;
 let isPoisoned = false;
 let poisonSteps = 0;
-let poisonStepsTaken = 0;
+let poisonStepsCount = 0;
 const LEVEL4_TARGET_STEPS = 30;
 
 // level 5
@@ -43,7 +43,7 @@ const FIXED_MINE_COUNT = 5;
 const DYNAMIC_MINE_COUNT = 5;
 let fixedMines = [];
 let dynamicMines = [];
-const LEVEL5_TARGET = 15;
+const LEVEL5_TARGET = 10;
 
 // level 6
 let crateX = 8;
@@ -54,7 +54,7 @@ let isTargetActive = false;
 let portalA = {x:3, y:10};
 let portalB = {x:16, y:10};
 const PORTAL_COOLDOWN = 10000;
-let crateTeleportReadyAt = 0;
+let teleportReady = 0;
 const LEVEL6_TARGET = 5;
 
 // level 7
@@ -64,16 +64,7 @@ let pastParts = [];
 const LEVEL7_TARGET = 20;
 
 // level 8
-let ghostX = 2;
-let ghostY = 2;
-let ghostCounter = 0;
-let ghostStun = 0;
-const GHOST_MOVE_STEPS = 1;
-const GHOST_STUN_TICKS = 8;
-const LEVEL8_TARGET = 15;
-
-// level 9
-const LEVEL9_TARGET = 20;
+const LEVEL8_TARGET = 20;
 
 let currentLevel = 1;
 
@@ -110,8 +101,8 @@ const level6Walls = [
     {x: 10, y: 15}, {x: 10, y: 16}, {x: 10, y: 17}, {x: 10, y: 18}, {x: 10, y: 19}
 ];
 
-// level 9 walls
-const LEVEL9_BASE_WALLS = [
+// level 8 walls
+const LEVEL8_BASE_WALLS = [
     {x: 4, y: 4}, {x: 5, y: 4}, {x: 6, y: 4}, {x: 7, y: 4},
     {x: 14, y: 8}, {x: 14, y: 9}, {x: 14, y: 10}, {x: 14, y: 11}, {x: 14, y: 12},
     {x: 3, y: 14}, {x: 4, y: 14}, {x: 5, y: 14}, {x: 3, y: 15},
@@ -121,7 +112,7 @@ const LEVEL9_BASE_WALLS = [
     {x: 10, y: 17}, {x: 11, y: 17}, {x: 12, y: 17}, {x: 13, y: 17},
     {x: 16, y: 15}, {x: 16, y: 16}, {x: 16, y: 17}
 ];
-let level9Walls = [];
+let level8Walls = [];
 
 let speed = 8;
 let xVelocity = 0;
@@ -136,7 +127,7 @@ let score = 0;
 
 function pickLevel() {
     currentLevel++;
-    if(currentLevel > 9) {
+    if(currentLevel > 8) {
         currentLevel = 1;
     }
     document.getElementById('level-btn').innerText = 'LEVEL ' + currentLevel;
@@ -150,7 +141,7 @@ function pickLevel() {
 
 function startGame() {
     switch (currentLevel) {
-        case 1: speed = 6; break;
+        case 1: speed = 8; break;
         case 2: speed = 8; break;
         case 3: speed = 8; break;
         case 4: speed = 8; break;
@@ -158,10 +149,10 @@ function startGame() {
         case 6: speed = 7; break;
         case 7: speed = 8; break;
         case 8: speed = 8; break;
-        case 9: speed = 8; break;
     }
 
     clearTimeout(gameLoopId);
+    document.getElementById('help-panel').classList.add('hidden');
     isPause = false;
     gameActive = true;
     document.getElementById('continue-btn').classList.add('hidden');
@@ -179,8 +170,12 @@ function startGame() {
     crateY = 8;
     targetX = 15;
     targetY = 15;
-    crateTeleportReadyAt = 0;
+    teleportReady = 0;
     isTargetActive = false;
+
+    if(currentLevel === 1 || currentLevel === 3) {
+        spawnApple();
+    }
 
     if(currentLevel === 2) {
         appleMoveCounter = 0;
@@ -191,7 +186,7 @@ function startGame() {
         spawnPoisonApple()
         spawnApple();
         isPoisoned = false;
-        poisonStepsTaken = 0;
+        poisonStepsCount = 0;
     }
 
     if(currentLevel === 5) {
@@ -206,17 +201,9 @@ function startGame() {
     }
 
     if(currentLevel === 8) {
-        ghostX = 2;
-        ghostY = 2;
-        ghostCounter = 0;
-        ghostStun = 0;
-        spawnApple();
-    }
-
-    if(currentLevel === 9) {
-        level9Walls = [];
-        for(let i = 0; i < LEVEL9_BASE_WALLS.length; i++) {
-            level9Walls.push({x: LEVEL9_BASE_WALLS[i].x, y: LEVEL9_BASE_WALLS[i].y});
+        level8Walls = [];
+        for(let i = 0; i < LEVEL8_BASE_WALLS.length; i++) {
+            level8Walls.push({x: LEVEL8_BASE_WALLS[i].x, y: LEVEL8_BASE_WALLS[i].y});
         }
         spawnApple();
     }
@@ -240,8 +227,8 @@ function pauseGame() {
 function continueGame() {
     if(!gameActive || !isPause) return;
     isPause = false;
-    if(crateTeleportReadyAt > 0) {
-        crateTeleportReadyAt += Date.now() - pauseAt;
+    if(teleportReady > 0) {
+        teleportReady += Date.now() - pauseAt;
     }
     document.getElementById('continue-btn').classList.add('hidden');
     document.getElementById('main-menu').classList.add('hidden');
@@ -262,7 +249,6 @@ function drawGame() {
     if(checkWinCondition()) return;
 
     drawApple();
-    drawGhost();
     drawPast();
     drawSnake();
     drawScore();
@@ -276,8 +262,7 @@ function isGameOver() {
     let gameOver = false;
 
     // walls
-    if(currentLevel !== 1 && currentLevel !== 2 && currentLevel !== 5
-        && currentLevel !== 7 && currentLevel !== 8) {
+    if(currentLevel !== 1 && currentLevel !== 2 && currentLevel !== 5 && currentLevel !== 7) {
         if (headX < 0) {
             gameOver = true;
         } else if (headX === tileCount) {
@@ -343,13 +328,9 @@ function isGameOver() {
         }
     }
 
-    if (currentLevel === 8 && headX === ghostX && headY === ghostY) {
-        gameOver = true;
-    }
-
-    if (currentLevel === 9) {
-        for (let i = 0; i < level9Walls.length; i++) {
-            if (headX === level9Walls[i].x && headY === level9Walls[i].y) {
+    if (currentLevel === 8) {
+        for (let i = 0; i < level8Walls.length; i++) {
+            if (headX === level8Walls[i].x && headY === level8Walls[i].y) {
                 gameOver = true;
                 break;
             }
@@ -396,17 +377,17 @@ function drawWalls() {
         }
     }
 
-    if (currentLevel === 9) {
-        for (let i = 0; i < level9Walls.length; i++) {
-            context.fillRect(level9Walls[i].x * gridStep, level9Walls[i].y * gridStep, tileSize, tileSize);
+    if (currentLevel === 8) {
+        for (let i = 0; i < level8Walls.length; i++) {
+            context.fillRect(level8Walls[i].x * gridStep, level8Walls[i].y * gridStep, tileSize, tileSize);
         }
     }
 }
 
 function drawLevel5 () {
     if(currentLevel !== 5) return;
-    checkAndDrawMineWarning(fixedMines);
-    checkAndDrawMineWarning(dynamicMines);
+    checkMines(fixedMines);
+    checkMines(dynamicMines);
 }
 
 function drawLevel6() {
@@ -432,17 +413,17 @@ function drawLevel6() {
 }
 
 
-function checkAndDrawMineWarning(mineList) {
+function checkMines(mineList) {
     for(let i = 0; i < mineList.length; i++) {
         let mine = mineList[i];
         let disX = Math.abs(headX - mine.x);
         let disY = Math.abs(headY - mine.y);
-        let dis = Math.max(disX, disY);
+        let distance = Math.max(disX, disY);
 
-        if(dis === 1) {
+        if(distance === 1) {
             context.fillStyle = 'rgba(255, 0, 0, 0.4)';
             context.fillRect(mine.x * gridStep, mine.y * gridStep, tileSize, tileSize);
-        } else if (dis === 2) {
+        } else if (distance === 2) {
             context.fillStyle = 'rgba(255, 255, 0, 0.25)';
             context.fillRect(mine.x * gridStep, mine.y * gridStep, tileSize, tileSize);
         }
@@ -460,7 +441,7 @@ function drawScore() {
     } else if (currentLevel === 3) {
         context.fillText(`Score: ${score} | Target: ${LEVEL3_TARGET}`, 10, 25);
     } else if (currentLevel === 4) {
-        context.fillText(`Poison Steps: ${poisonStepsTaken}/${LEVEL4_TARGET_STEPS}`, 10, 25);
+        context.fillText(`Poison Steps: ${poisonStepsCount}/${LEVEL4_TARGET_STEPS}`, 10, 25);
     } else if (currentLevel === 5) {
         context.fillText(`Score: ${score} | Target: ${LEVEL5_TARGET}`, 10, 25);
     } else if (currentLevel === 6) {
@@ -469,8 +450,6 @@ function drawScore() {
         context.fillText(`Score: ${score} | Target: ${LEVEL7_TARGET}`, 10, 25);
     } else if (currentLevel === 8) {
         context.fillText(`Score: ${score} | Target: ${LEVEL8_TARGET}`, 10, 25);
-    } else if (currentLevel === 9) {
-        context.fillText(`Score: ${score} | Target: ${LEVEL9_TARGET}`, 10, 25);
     } else {
         context.fillText(`Score: ${score}`, 10, 25);
     }
@@ -500,8 +479,7 @@ function changeSnakePosition() {
     let nextX = headX + xVelocity;
     let nextY = headY + yVelocity;
 
-    if (currentLevel === 1 || currentLevel === 2 || currentLevel === 5
-        || currentLevel === 7 || currentLevel === 8) {
+    if (currentLevel === 1 || currentLevel === 2 || currentLevel === 5 || currentLevel === 7) {
         if (nextX < 0) {
             nextX = tileCount - 1;
         }
@@ -540,13 +518,13 @@ function changeSnakePosition() {
         }
 
         const now = Date.now();
-        if (now >= crateTeleportReadyAt) {
+        if (now >= teleportReady) {
             if (crateX === portalA.x && crateY === portalA.y) {
                 crateX = portalB.x; crateY = portalB.y;
-                crateTeleportReadyAt = now + PORTAL_COOLDOWN;
+                teleportReady = now + PORTAL_COOLDOWN;
             } else if (crateX === portalB.x && crateY === portalB.y) {
                 crateX = portalA.x; crateY = portalA.y;
-                crateTeleportReadyAt = now + PORTAL_COOLDOWN;
+                teleportReady = now + PORTAL_COOLDOWN;
             }
         }
 
@@ -594,16 +572,12 @@ function changeSnakePosition() {
     if(isPoisoned) {
         poisonSteps = poisonSteps - 1;
         if (xVelocity !== 0 || yVelocity !== 0) {
-            poisonStepsTaken++;
+            poisonStepsCount++;
         }
 
         if(poisonSteps <= 0) {
             isPoisoned = false;
         }
-    }
-
-    if (currentLevel === 8 && (xVelocity !== 0 || yVelocity !== 0)) {
-        moveGhost();
     }
 }
 
@@ -642,12 +616,25 @@ function spawnApple() {
             }
         }
 
+        if(currentLevel === 5) {
+            for(let i = 0; i < fixedMines.length; i++) {
+                if(appleX === fixedMines[i].x && appleY === fixedMines[i].y) {
+                    appleOnSnake = true;
+                    break;
+                }
+            }
+            for(let i = 0; i < dynamicMines.length; i++) {
+                if(appleX === dynamicMines[i].x && appleY === dynamicMines[i].y) {
+                    appleOnSnake = true;
+                    break;
+                }
+            }
+        }
+
         if(currentLevel === 6) {
             if(appleX === 10) { appleOnSnake = true; continue; }
-            if((appleX === portalA.x && appleY === portalA.y)
-                || (appleX === portalB.x && appleY === portalB.y)
-                || (appleX === crateX && appleY === crateY)
-                || (appleX === targetX && appleY === targetY)) {
+            if((appleX === portalA.x && appleY === portalA.y) || (appleX === portalB.x && appleY === portalB.y)
+                || (appleX === crateX && appleY === crateY)  || (appleX === targetX && appleY === targetY)) {
                 appleOnSnake = true;
                 continue;
             }
@@ -662,9 +649,9 @@ function spawnApple() {
             }
         }
 
-        if(currentLevel === 9) {
-            for(let i = 0; i < level9Walls.length; i++) {
-                let wall = level9Walls[i];
+        if(currentLevel === 8) {
+            for(let i = 0; i < level8Walls.length; i++) {
+                let wall = level8Walls[i];
                 if(appleX === wall.x && appleY === wall.y) {
                     appleOnSnake = true;
                     break;
@@ -711,30 +698,6 @@ function moveAppleRandom() {
         appleX = randomMoves.x;
         appleY = randomMoves.y;
     }
-}
-
-function moveGhost() {
-    if(ghostStun > 0) {
-        ghostStun--;
-        return;
-    }
-    ghostCounter++;
-    if(ghostCounter < GHOST_MOVE_STEPS) return;
-    ghostCounter = 0;
-
-    const dx = headX - ghostX;
-    const dy = headY - ghostY;
-    if(Math.abs(dx) >= Math.abs(dy)) {
-        ghostX += Math.sign(dx);
-    } else {
-        ghostY += Math.sign(dy);
-    }
-}
-
-function drawGhost() {
-    if(currentLevel !== 8) return;
-    context.fillStyle = ghostStun > 0 ? 'gray' : 'cyan';
-    context.fillRect(ghostX * gridStep, ghostY * gridStep, tileSize, tileSize);
 }
 
 function drawPast() {
@@ -802,7 +765,7 @@ function resetCrate(avoidX, avoidY) {
 
     crateX = newX;
     crateY = newY;
-    crateTeleportReadyAt = 0;
+    teleportReady = 0;
 }
 
 function checkCrateOnTarget() {
@@ -829,12 +792,9 @@ function checkAppleCollision() {
             resetCrate(-1, -1);
         } else {
             if(currentLevel === 5){
-                relocateDynamicMines();
+                resetDynamicMines();
             }
             if(currentLevel === 8) {
-                ghostStun = GHOST_STUN_TICKS;
-            }
-            if(currentLevel === 9) {
                 rotateWorld();
             }
             spawnApple();
@@ -865,7 +825,7 @@ function checkWinCondition() {
         return true;
     }
 
-    if (currentLevel === 4 && poisonStepsTaken >= LEVEL4_TARGET_STEPS) {
+    if (currentLevel === 4 && poisonStepsCount >= LEVEL4_TARGET_STEPS) {
         displayWinText('LEVEL 4 COMPLETED!');
         return true;
     }
@@ -890,12 +850,23 @@ function checkWinCondition() {
         return true;
     }
 
-    if (currentLevel === 9 && score >= LEVEL9_TARGET) {
-        displayWinText('LEVEL 9 COMPLETED!');
-        return true;
-    }
-
     return false;
+}
+
+function updateLevelButton() {
+    document.getElementById('level-btn').innerText = 'LEVEL ' + currentLevel;
+}
+
+function nextLevel() {
+    if(currentLevel >= 8) {
+        currentLevel = 1;
+        updateLevelButton();
+        showMenu();
+        return;
+    }
+    currentLevel++;
+    updateLevelButton();
+    startGame();
 }
 
 function displayWinText(text) {
@@ -905,7 +876,7 @@ function displayWinText(text) {
     context.textAlign = 'center';
     context.fillText(text, canvas.width / 2, canvas.height / 2);
     context.textAlign = 'left';
-    setTimeout(showMenu, 1500);
+    setTimeout(nextLevel, 1500);
 }
 
 function generateMines() {
@@ -927,7 +898,7 @@ function generateMines() {
             fixedMines.push({x: mx, y: my});
         }
     }
-    relocateDynamicMines();
+    resetDynamicMines();
 }
 
 function rotatePoint(p) {
@@ -950,41 +921,72 @@ function rotateWorld() {
     for(let i = 0; i < snakeParts.length; i++) {
         rotatePoint(snakeParts[i]);
     }
-    for(let i = 0; i < level9Walls.length; i++) {
-        rotatePoint(level9Walls[i]);
+    for(let i = 0; i < level8Walls.length; i++) {
+        rotatePoint(level8Walls[i]);
     }
 
-    let newWalls = [];
-    for(let i = 0; i < level9Walls.length; i++) {
-        let wall = level9Walls[i];
-        let keepWall = true;
-        let disX = Math.abs(wall.x - headX);
-        let disY = Math.abs(wall.y - headY);
-        if(disX <= 2 && disY <= 2) {
-            keepWall = false;
+    for(let i = 0; i < level8Walls.length; i++) {
+        let wall = level8Walls[i];
+        let conflict = false;
+
+        if(Math.abs(wall.x - headX) <= 2 && Math.abs(wall.y - headY) <=2) {
+            conflict = true;
         }
 
         for(let j = 0; j < snakeParts.length; j++) {
             if(snakeParts[j].x === wall.x && snakeParts[j].y === wall.y) {
-                keepWall = false;
+                conflict = false;
                 break;
             }
         }
 
-        if(keepWall) {
-            newWalls.push(wall);
+        if(conflict) {
+            resetWall(wall, i);
         }
     }
-    level9Walls = newWalls;
 }
 
-function relocateDynamicMines() {
+function resetWall(wall, index) {
+    for(let i = 0; i < 300; i++) {
+        let newX = Math.floor(Math.random() * tileCount);
+        let newY = Math.floor(Math.random() * tileCount);
+        let ok = true;
+
+        if(Math.abs(newX - headX) <= 2 && Math.abs(newY - headY) <= 2) {
+            ok = false;
+        }
+
+        for(let j = 0; ok && j < snakeParts.length; j++) {
+            if(snakeParts[j].x === newX && snakeParts[j].y === newY) {
+                ok = false;
+            }
+        }
+
+        for(let j = 0; ok && j < level8Walls.length; j++) {
+            if(j !== index && level8Walls[j].x === newX && level8Walls[j].y === newY) {
+                ok = false;
+            }
+        }
+
+        if(newX === appleX && newY === appleY) {
+            ok = false;
+        }
+        if(ok) {
+            wall.x = newX;
+            wall.y = newY;
+            return;
+        }
+    }
+}
+
+function resetDynamicMines() {
     dynamicMines = [];
     while(dynamicMines.length < DYNAMIC_MINE_COUNT) {
         let mx = Math.floor(Math.random() * tileCount);
         let my = Math.floor(Math.random() * tileCount);
         if(mx === headX && my === headY) continue;
         if(mx === appleX && my === appleY) continue;
+        if(Math.abs(mx - headX) <= 2 && Math.abs(my - headY) <= 2) continue;
         let hasMine = false;
 
         for(let i = 0; i < fixedMines.length; i++) {
@@ -1111,7 +1113,7 @@ function showHelp() {
             break;
         case 5:
             text = '<h2>LEVEL 5</h2>' +
-                'Đạt 15 điểm để thắng.<br>' +
+                'Đạt 10 điểm để thắng.<br>' +
                 'Né mìn ẩn cố định, mìn ẩn di động (đổi chỗ mỗi lần ăn táo).<br>' +
                 'Ô đỏ là mìn cách 1 ô, ô vàng là mìn cách 2 ô.<br>' +
                 'Chạm mìn là thua.';
@@ -1131,14 +1133,8 @@ function showHelp() {
             break;
         case 8:
             text = '<h2>LEVEL 8</h2>' +
-                'Đạt 15 điểm để thắng.<br>' +
-                'Con ma xanh đuổi theo bạn, chạm vào là thua.<br>' +
-                'Ăn táo sẽ làm ma bị choáng 8 bước.';
-            break;
-        case 9:
-            text = '<h2>LEVEL 9</h2>' +
                 'Đạt 20 điểm để thắng.<br>' +
-                'Mỗi lần ăn táo màn chơi sẽ xoay 90 độ.';
+                'Mỗi lần ăn táo màn chơi sẽ xoay 90 độ và tường gần đầu rắn di chuyển ngẫu nhiên.';
             break;
     }
     panel.innerHTML = text;

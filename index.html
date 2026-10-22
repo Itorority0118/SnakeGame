@@ -1,9 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Snake Game</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+
+        .game-container {
+            position: relative;
+            width: 500px;
+            height: 500px;
+        }
+
+        .menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 500px;
+            height: 500px;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            box-sizing: border-box;
+        }
+
+        .empty-screen {
+            width: 400px;
+            height: 300px;
+            background-color: #111;
+            background-image: url("SnakeGame.png");
+            background-size: cover;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        .button-group button {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            transition: 0.2s;
+        }
+
+        .button-group button:hover {
+            background-color: #45a049;
+        }
+
+        .button-group #level-btn {
+            background-color: #2196F3;
+        }
+
+        .button-group #level-btn:hover {
+            background-color: #0b7dda;
+        }
+
+        .button-group #continue-btn {
+            background-color: #ff9800;
+        }
+
+        .button-group #continue-btn:hover {
+            background-color: #e68900;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #help-btn {
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            z-index: 20;
+            padding: 6px 12px;
+            font: bold 14px Arial;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.75);
+            border: 2px solid white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #help-btn:hover {
+            background-color: rgba(60, 60, 60, 0.9);
+        }
+
+        #help-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 500px;
+            height: 500px;
+            z-index: 10;
+            box-sizing: border-box;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.95);
+            font-size: 18px;
+            overflow: auto;
+        }
+
+        #help-panel h2 {
+            margin-top: 0;
+            color: gold;
+        }
+
+        #help-panel ul {
+            padding-left: 20px;
+            line-height: 1.5;
+        }
+
+        #help-panel .note {
+            font-size: 15px;
+            color: #bbb;
+        }
+    </style>
 </head>
 <body>
     <h1>SNAKE GAME</h1>
@@ -23,6 +157,6 @@
         <div id="help-panel" class="hidden"></div>
     </div>
 
-    <script src="index.js"></script>
+    <script src="game.js"></script>
 </body>
 </html>
